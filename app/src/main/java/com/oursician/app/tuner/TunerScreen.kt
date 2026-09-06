@@ -12,7 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -80,7 +83,10 @@ fun TunerScreen(viewModel: TunerViewModel = viewModel()) {
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
@@ -97,13 +103,13 @@ fun TunerScreen(viewModel: TunerViewModel = viewModel()) {
                 val note = uiState.detectedNote
                 Text(
                     text = note?.let { "${it.name}${it.octave}" } ?: "—",
-                    style = MaterialTheme.typography.displayLarge,
+                    style = MaterialTheme.typography.headlineLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 StringList(
                     closestString = uiState.closestString,
                     cents = note?.cents,
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = 4.dp),
                 )
                 CentsGauge(
                     cents = note?.cents ?: 0.0,
@@ -126,7 +132,7 @@ private fun StringList(
     modifier: Modifier = Modifier,
 ) {
     // STANDARD_GUITAR_TUNING is already ordered from the lowest string (E2) to the highest (E4).
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(1.dp)) {
         for (string in STANDARD_GUITAR_TUNING) {
             val isActive = string == closestString
             val color = when {
@@ -137,11 +143,15 @@ private fun StringList(
             Text(
                 text = "${string.label} · %.2f Hz".format(string.frequency),
                 style = if (isActive) {
-                    MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                 } else {
-                    MaterialTheme.typography.titleMedium
+                    MaterialTheme.typography.bodyMedium
                 },
                 color = color,
+            )
+            HorizontalDivider(
+                color = color,
+                thickness = if (isActive) 2.dp else 1.dp,
             )
         }
     }
@@ -153,7 +163,7 @@ private fun CentsGauge(cents: Double, modifier: Modifier = Modifier) {
     val inTune = abs(cents) < 5
     val needleColor = if (inTune) OursicianTeal else OursicianAmber
 
-    Canvas(modifier = modifier.height(48.dp)) {
+    Canvas(modifier = modifier.height(32.dp)) {
         val centerX = size.width / 2f
         val trackY = size.height / 2f
 
