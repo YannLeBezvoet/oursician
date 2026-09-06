@@ -13,10 +13,10 @@ interface PitchDetector {
  * threshold search, and parabolic interpolation for sub-sample precision.
  */
 class YinPitchDetector(
-    private val threshold: Double = 0.15,
+    private val threshold: Double = 0.2,
     private val minFrequencyHz: Double = 70.0,
     private val maxFrequencyHz: Double = 400.0,
-    private val silenceRmsThreshold: Float = 0.01f,
+    private val silenceRmsThreshold: Float = 0.005f,
 ) : PitchDetector {
 
     override fun detectPitch(buffer: FloatArray, sampleRate: Int): Float? {
