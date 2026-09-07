@@ -1,6 +1,7 @@
 package com.oursician.app.tuner
 
 import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 private val NOTE_NAMES = listOf("C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B")
@@ -28,11 +29,24 @@ val STANDARD_GUITAR_TUNING = listOf(
     GuitarString("E4", 329.63f),
 )
 
+private fun exactMidiNote(frequency: Float): Double =
+    A4_MIDI_NOTE + 12.0 * (ln(frequency / A4_FREQUENCY) / ln(2.0))
+
+/** Rounds a frequency (Hz) to the nearest MIDI note number (69 = A4 = 440Hz). */
+fun frequencyToNearestMidiNote(frequency: Float): Int {
+    require(frequency > 0f) { "frequency must be positive" }
+    return exactMidiNote(frequency).roundToInt()
+}
+
+/** Converts a MIDI note number (69 = A4 = 440Hz) into its frequency in Hz. */
+fun midiNoteToFrequency(midiNote: Int): Float =
+    (A4_FREQUENCY * 2.0.pow((midiNote - A4_MIDI_NOTE) / 12.0)).toFloat()
+
 /** Converts a raw frequency (Hz) into the nearest equal-tempered note and its tuning offset. */
 fun frequencyToNote(frequency: Float): DetectedNote {
     require(frequency > 0f) { "frequency must be positive" }
 
-    val exactMidiNote = A4_MIDI_NOTE + 12.0 * (ln(frequency / A4_FREQUENCY) / ln(2.0))
+    val exactMidiNote = exactMidiNote(frequency)
     val nearestMidiNote = exactMidiNote.roundToInt()
     val cents = (exactMidiNote - nearestMidiNote) * 100.0
 
