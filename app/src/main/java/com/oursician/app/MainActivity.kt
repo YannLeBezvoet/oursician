@@ -7,7 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.oursician.app.home.HomeScreen
 import com.oursician.app.tablature.TablatureScreen
@@ -22,7 +22,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             OursicianTheme {
-                var screen by remember { mutableStateOf(Screen.HOME) }
+                var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
                 BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
 
                 when (screen) {
