@@ -57,8 +57,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import com.oursician.app.ui.theme.OursicianAmber
-import com.oursician.app.ui.theme.OursicianTeal
+import com.oursician.app.ui.theme.OursicianCoral
+import com.oursician.app.ui.theme.OursicianTurquoise
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -115,7 +115,7 @@ fun TunerScreen(viewModel: TunerViewModel = viewModel(), onBack: (() -> Unit)? =
             } else {
                 val note = uiState.detectedNote
                 val inTune = note != null && abs(note.cents) < 5
-                val tuneColor = if (inTune) OursicianTeal else OursicianAmber
+                val tuneColor = if (inTune) OursicianTurquoise else OursicianCoral
 
                 TunerHero(
                     noteName = note?.let { "${it.name}${it.octave}" } ?: "—",
@@ -167,21 +167,21 @@ private fun EyebrowBar(isListening: Boolean, onBack: (() -> Unit)? = null, modif
         if (isListening) {
             Surface(
                 shape = RoundedCornerShape(50),
-                color = OursicianTeal.copy(alpha = 0.12f),
+                color = OursicianTurquoise.copy(alpha = 0.12f),
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    MicIcon(tint = OursicianTeal, iconSize = 12.dp)
+                    MicIcon(tint = OursicianTurquoise, iconSize = 12.dp)
                     Text(
                         text = "EN ÉCOUTE",
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                         ),
-                        color = OursicianTeal,
+                        color = OursicianTurquoise,
                     )
                 }
             }
@@ -366,7 +366,7 @@ private fun PermissionContent(onRequestPermission: () -> Unit, modifier: Modifie
                 .background(MaterialTheme.colorScheme.surface),
             contentAlignment = Alignment.Center,
         ) {
-            MicIcon(tint = OursicianAmber, iconSize = 36.dp)
+            MicIcon(tint = OursicianCoral, iconSize = 36.dp)
         }
         Spacer(modifier = Modifier.height(20.dp))
         Text(

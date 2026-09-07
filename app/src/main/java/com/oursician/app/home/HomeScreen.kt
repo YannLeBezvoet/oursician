@@ -29,8 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oursician.app.ui.theme.OursicianAmber
-import com.oursician.app.ui.theme.OursicianTeal
+import com.oursician.app.ui.theme.OursicianCoral
+import com.oursician.app.ui.theme.OursicianTurquoise
 
 @Composable
 fun HomeScreen(
@@ -65,7 +65,7 @@ fun HomeScreen(
             FeatureCard(
                 title = "Accordeur",
                 description = "Accorde ta guitare en temps réel avec le micro.",
-                accentColor = OursicianTeal,
+                accentColor = OursicianTurquoise,
                 icon = { tint, size -> TunerIcon(tint = tint, iconSize = size) },
                 onClick = onSelectTuner,
             )
@@ -73,7 +73,7 @@ fun HomeScreen(
             FeatureCard(
                 title = "Tablatures",
                 description = "Bientôt disponible.",
-                accentColor = OursicianAmber,
+                accentColor = OursicianCoral,
                 icon = { tint, size -> TabIcon(tint = tint, iconSize = size) },
                 onClick = onSelectTablature,
             )
