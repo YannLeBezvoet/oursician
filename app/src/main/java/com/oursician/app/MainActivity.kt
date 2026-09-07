@@ -9,6 +9,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.oursician.app.home.HomeScreen
 import com.oursician.app.tablature.TablatureScreen
 import com.oursician.app.tuner.TunerScreen
@@ -20,6 +22,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        hideSystemNavigationBar()
         setContent {
             OursicianTheme {
                 var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
@@ -34,6 +37,20 @@ class MainActivity : ComponentActivity() {
                     Screen.TABLATURE -> TablatureScreen(onBack = { screen = Screen.HOME })
                 }
             }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // The system can re-show the navigation bar when the window regains focus
+        // (e.g. after unlocking the screen), so it needs to be re-hidden each time.
+        if (hasFocus) hideSystemNavigationBar()
+    }
+
+    private fun hideSystemNavigationBar() {
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            hide(WindowInsetsCompat.Type.navigationBars())
+            systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
 }
