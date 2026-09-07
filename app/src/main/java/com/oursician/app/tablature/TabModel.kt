@@ -46,7 +46,8 @@ data class Beat(val duration: NoteDuration, val positions: List<FretPosition> = 
 
 data class Measure(val beats: List<Beat>)
 
-data class Tablature(val title: String, val tuning: Tuning, val measures: List<Measure>)
+/** [tempoBpm] is quarter notes per minute — it drives auto-scroll playback speed. */
+data class Tablature(val title: String, val tuning: Tuning, val tempoBpm: Int, val measures: List<Measure>)
 
 /** Resolves the MIDI note actually sounded by [position] on this tuning. */
 fun Tuning.midiNoteAt(position: FretPosition): Int {
