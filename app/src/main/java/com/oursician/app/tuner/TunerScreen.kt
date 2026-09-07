@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,7 +62,7 @@ import com.oursician.app.ui.theme.OursicianTeal
 
 @SuppressLint("MissingPermission")
 @Composable
-fun TunerScreen(viewModel: TunerViewModel = viewModel()) {
+fun TunerScreen(viewModel: TunerViewModel = viewModel(), onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -106,7 +107,7 @@ fun TunerScreen(viewModel: TunerViewModel = viewModel()) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            EyebrowBar(isListening = hasMicPermission && uiState.isListening)
+            EyebrowBar(isListening = hasMicPermission && uiState.isListening, onBack = onBack)
             Spacer(modifier = Modifier.height(20.dp))
 
             if (!hasMicPermission) {
@@ -134,17 +135,26 @@ fun TunerScreen(viewModel: TunerViewModel = viewModel()) {
 }
 
 @Composable
-private fun EyebrowBar(isListening: Boolean, modifier: Modifier = Modifier) {
+private fun EyebrowBar(isListening: Boolean, onBack: (() -> Unit)? = null, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            SoundwaveIcon(
-                tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                iconSize = 16.dp,
-            )
+            if (onBack != null) {
+                Text(
+                    text = "←",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f),
+                    modifier = Modifier.clickable(onClick = onBack),
+                )
+            } else {
+                SoundwaveIcon(
+                    tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
+                    iconSize = 16.dp,
+                )
+            }
             Text(
                 text = "OURSICIAN · ACCORDEUR",
                 style = MaterialTheme.typography.labelSmall.copy(
