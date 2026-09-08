@@ -13,10 +13,11 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.oursician.app.home.HomeScreen
 import com.oursician.app.tablature.TablatureScreen
+import com.oursician.app.tablature.library.TabLibraryScreen
 import com.oursician.app.tuner.TunerScreen
 import com.oursician.app.ui.theme.OursicianTheme
 
-private enum class Screen { HOME, TUNER, TABLATURE }
+private enum class Screen { HOME, TUNER, TAB_LIBRARY, TAB_VIEW }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,15 +27,28 @@ class MainActivity : ComponentActivity() {
         setContent {
             OursicianTheme {
                 var screen by rememberSaveable { mutableStateOf(Screen.HOME) }
-                BackHandler(enabled = screen != Screen.HOME) { screen = Screen.HOME }
+                var selectedSongId by rememberSaveable { mutableStateOf<String?>(null) }
+                BackHandler(enabled = screen != Screen.HOME) {
+                    screen = if (screen == Screen.TAB_VIEW) Screen.TAB_LIBRARY else Screen.HOME
+                }
 
                 when (screen) {
                     Screen.HOME -> HomeScreen(
                         onSelectTuner = { screen = Screen.TUNER },
-                        onSelectTablature = { screen = Screen.TABLATURE },
+                        onSelectTablature = { screen = Screen.TAB_LIBRARY },
                     )
                     Screen.TUNER -> TunerScreen(onBack = { screen = Screen.HOME })
-                    Screen.TABLATURE -> TablatureScreen(onBack = { screen = Screen.HOME })
+                    Screen.TAB_LIBRARY -> TabLibraryScreen(
+                        onBack = { screen = Screen.HOME },
+                        onSelectSong = { song ->
+                            selectedSongId = song.id
+                            screen = Screen.TAB_VIEW
+                        },
+                    )
+                    Screen.TAB_VIEW -> TablatureScreen(
+                        songId = requireNotNull(selectedSongId),
+                        onBack = { screen = Screen.TAB_LIBRARY },
+                    )
                 }
             }
         }

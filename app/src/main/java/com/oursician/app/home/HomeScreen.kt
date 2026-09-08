@@ -72,7 +72,7 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(16.dp))
             FeatureCard(
                 title = "Tablatures",
-                description = "Bientôt disponible.",
+                description = "Importe et joue tes tablatures.",
                 accentColor = OursicianCoral,
                 icon = { tint, size -> TabIcon(tint = tint, iconSize = size) },
                 onClick = onSelectTablature,

@@ -39,18 +39,26 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.oursician.app.tablature.library.SongRepository
 import com.oursician.app.tuner.frequencyToNote
 import com.oursician.app.tuner.midiNoteToFrequency
 import kotlin.math.roundToInt
 
 @Composable
-fun TablatureScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun TablatureScreen(songId: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val tablature = remember(songId) {
+        val repository = SongRepository(context)
+        repository.loadTablature(repository.listSongs().first { it.id == songId })
+    }
+
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
             modifier = Modifier
@@ -80,7 +88,7 @@ fun TablatureScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = DEMO_TABLATURE.title,
+                text = tablature.title,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground,
             )
@@ -92,7 +100,7 @@ fun TablatureScreen(onBack: () -> Unit, modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.surface,
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    ScrollingTabStaff(tablature = DEMO_TABLATURE, modifier = Modifier.fillMaxWidth())
+                    ScrollingTabStaff(tablature = tablature, modifier = Modifier.fillMaxWidth())
                 }
             }
         }
@@ -283,27 +291,3 @@ private fun PlayPauseIcon(isPlaying: Boolean, tint: Color, iconSize: Dp, modifie
         }
     }
 }
-
-private val DEMO_TABLATURE = Tablature(
-    title = "Gamme de démonstration",
-    tuning = STANDARD_TUNING,
-    tempoBpm = 90,
-    measures = listOf(
-        Measure(
-            beats = listOf(
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 0))),
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 2))),
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 4))),
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 5))),
-            ),
-        ),
-        Measure(
-            beats = listOf(
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 7))),
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 9))),
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 11))),
-                Beat(NoteDuration.QUARTER, listOf(FretPosition(stringNumber = 6, fret = 12))),
-            ),
-        ),
-    ),
-)
