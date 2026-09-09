@@ -1,10 +1,12 @@
 package com.oursician.app
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -30,6 +32,17 @@ class MainActivity : ComponentActivity() {
                 var selectedSongId by rememberSaveable { mutableStateOf<String?>(null) }
                 BackHandler(enabled = screen != Screen.HOME) {
                     screen = if (screen == Screen.TAB_VIEW) Screen.TAB_LIBRARY else Screen.HOME
+                }
+
+                // The scrolling tab staff is unreadable in portrait and its auto-scroll timing was
+                // only ever tuned/tested in landscape — lock to landscape while reading a
+                // tablature, and let every other screen rotate freely as before.
+                LaunchedEffect(screen) {
+                    requestedOrientation = if (screen == Screen.TAB_VIEW) {
+                        ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    } else {
+                        ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    }
                 }
 
                 when (screen) {
