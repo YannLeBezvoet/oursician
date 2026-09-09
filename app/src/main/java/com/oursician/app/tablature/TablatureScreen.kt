@@ -19,10 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -46,9 +49,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.oursician.app.tablature.library.SongRepository
+import com.oursician.app.tablature.playback.TabAudioRenderer
+import com.oursician.app.tablature.playback.TabPlaybackViewModel
+import com.oursician.app.tablature.playback.TimedBeat
 import com.oursician.app.tuner.frequencyToNote
 import com.oursician.app.tuner.midiNoteToFrequency
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 @Composable
@@ -112,16 +121,23 @@ private val BEAT_COLUMN_WIDTH = 44.dp
 private val MEASURE_DIVIDER_WIDTH = 13.dp // 6dp padding + 1dp line + 6dp padding
 private val PLAYHEAD_INSET = 24.dp
 
-private fun beatWidth(beat: Beat): Dp =
-    BEAT_COLUMN_WIDTH * (beat.duration.fractionOfWhole / NoteDuration.QUARTER.fractionOfWhole).toFloat()
+private fun beatWidth(beat: Beat): Dp = BEAT_COLUMN_WIDTH * beat.duration.quarterNoteMultiple
+
+private enum class PlaybackMode { NONE, SCROLL_ONLY, SCROLL_WITH_AUDIO }
 
 /**
  * Renders a [Tablature] that auto-scrolls right-to-left at a speed derived from its tempo,
  * Guitar Hero-style: notes travel toward the fixed playhead line instead of the reader
- * scrolling through a static page.
+ * scrolling through a static page. Two independent triggers share this one scroll clock: the
+ * round play/pause button (scroll only, to play along) and "Écouter la tablature" (scroll +
+ * synthesized audio, delayed to start exactly when the first note reaches the playhead).
  */
 @Composable
-fun ScrollingTabStaff(tablature: Tablature, modifier: Modifier = Modifier) {
+fun ScrollingTabStaff(
+    tablature: Tablature,
+    modifier: Modifier = Modifier,
+    playbackViewModel: TabPlaybackViewModel = viewModel(),
+) {
     // Lowest string (highest string number) on top, highest string (e.g. high E) on the bottom.
     val strings = tablature.tuning.strings.sortedByDescending { it.stringNumber }
     val lineColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
@@ -138,23 +154,92 @@ fun ScrollingTabStaff(tablature: Tablature, modifier: Modifier = Modifier) {
     val secondsPerQuarterNote = 60f / tablature.tempoBpm
     val pxPerSecond = with(density) { BEAT_COLUMN_WIDTH.toPx() } / secondsPerQuarterNote
 
-    var isPlaying by remember { mutableStateOf(false) }
+    // Each beat's on-screen offset from the start of the content — the same distance the layout
+    // below places it at, measure dividers included — converted to seconds via pxPerSecond. A
+    // beat's musical duration alone (as TabAudioRenderer's TimedBeat.musicalStartSeconds tracks
+    // it) undercounts this for every measure after the first, since the MEASURE_DIVIDER_WIDTH gap
+    // between measures adds real on-screen distance that isn't musical time — using musical time
+    // alone to schedule triggers made every beat fire increasingly early relative to when it
+    // actually crosses the playhead, the more measures had already scrolled by. One entry per beat
+    // (rests included), so it stays index-aligned with TabAudioRenderer's timeline.
+    val beatOffsetSeconds = remember(tablature, pxPerSecond) {
+        val offsets = ArrayList<Float>(totalBeats)
+        var accumulatedPx = 0f
+        tablature.measures.forEachIndexed { measureIndex, measure ->
+            measure.beats.forEach { beat ->
+                offsets += accumulatedPx / pxPerSecond
+                accumulatedPx += with(density) { beatWidth(beat).toPx() }
+            }
+            if (measureIndex != tablature.measures.lastIndex) {
+                accumulatedPx += with(density) { MEASURE_DIVIDER_WIDTH.toPx() }
+            }
+        }
+        offsets
+    }
+
+    var playbackMode by remember { mutableStateOf(PlaybackMode.NONE) }
     var elapsedSeconds by remember(tablature) { mutableFloatStateOf(0f) }
     var viewportWidthPx by remember { mutableFloatStateOf(0f) }
+    val isPlaying = playbackMode != PlaybackMode.NONE
 
     val totalDurationSeconds = (viewportWidthPx + with(density) { contentWidth.toPx() }) / pxPerSecond
+    // Notes start off-screen and take this long to reach the fixed playhead — every beat's trigger
+    // time is offset by this same amount so its sound fires exactly when it visually crosses the
+    // playhead, whether or not audio is playing.
+    val leadInSeconds = ((viewportWidthPx - with(density) { PLAYHEAD_INSET.toPx() }) / pxPerSecond).coerceAtLeast(0f)
 
-    LaunchedEffect(isPlaying, totalDurationSeconds) {
-        if (!isPlaying) return@LaunchedEffect
+    // Resets the scroll/UI state only. Used when the song reaches its natural end: any note
+    // triggered right before the last frame (the last beat, most obviously) is left to ring out on
+    // its own instead of being cut off mid-sound — killing every active track the instant the
+    // scroll stops is what made the last note sound truncated or silent.
+    fun stopPlayback() {
+        playbackMode = PlaybackMode.NONE
+        elapsedSeconds = 0f
+    }
+
+    // Used when the user explicitly interrupts playback (pauses, or picks it back up) — here
+    // going silent immediately is the expected behavior.
+    fun interruptPlayback() {
+        stopPlayback()
+        playbackViewModel.stop()
+    }
+
+    fun startPlayback(mode: PlaybackMode) {
+        playbackMode = mode
+        elapsedSeconds = 0f
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { playbackViewModel.stop() }
+    }
+
+    LaunchedEffect(playbackMode, totalDurationSeconds) {
+        if (playbackMode == PlaybackMode.NONE) return@LaunchedEffect
+
+        val timeline: List<TimedBeat> = if (playbackMode == PlaybackMode.SCROLL_WITH_AUDIO) {
+            withContext(Dispatchers.Default) { TabAudioRenderer.renderTimeline(tablature) }
+        } else {
+            emptyList()
+        }
+        var nextBeatIndex = 0
+
+        // The scroll starts advancing immediately — each beat's own trigger time (leadIn + its
+        // on-screen offset) is what keeps its sound aligned to the playhead, not a delay before the
+        // clock starts. Two clocks racing to match each other via a startup delay is exactly what
+        // caused the drift this replaces.
         var lastFrameNanos = withFrameNanos { it }
         while (true) {
             withFrameNanos { frameNanos ->
                 elapsedSeconds += (frameNanos - lastFrameNanos) / 1_000_000_000f
                 lastFrameNanos = frameNanos
             }
+            while (nextBeatIndex < timeline.size && leadInSeconds + beatOffsetSeconds[nextBeatIndex] <= elapsedSeconds) {
+                val pcm = timeline[nextBeatIndex].pcm
+                if (pcm.isNotEmpty()) playbackViewModel.trigger(pcm)
+                nextBeatIndex++
+            }
             if (elapsedSeconds >= totalDurationSeconds) {
-                isPlaying = false
-                elapsedSeconds = 0f
+                stopPlayback()
                 break
             }
         }
@@ -200,9 +285,34 @@ fun ScrollingTabStaff(tablature: Tablature, modifier: Modifier = Modifier) {
             }
         }
         Spacer(modifier = Modifier.height(16.dp))
-        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            PlayPauseButton(isPlaying = isPlaying, accentColor = playheadColor, onClick = { isPlaying = !isPlaying })
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PlayPauseButton(
+                isPlaying = isPlaying,
+                accentColor = playheadColor,
+                onClick = { if (isPlaying) interruptPlayback() else startPlayback(PlaybackMode.SCROLL_ONLY) },
+            )
+            ListenButton(
+                isListening = playbackMode == PlaybackMode.SCROLL_WITH_AUDIO,
+                accentColor = playheadColor,
+                onClick = { if (playbackMode == PlaybackMode.SCROLL_WITH_AUDIO) interruptPlayback() else startPlayback(PlaybackMode.SCROLL_WITH_AUDIO) },
+            )
         }
+    }
+}
+
+/** Toggles the scroll + synthesized audio started from [ScrollingTabStaff]'s shared clock. */
+@Composable
+private fun ListenButton(isListening: Boolean, accentColor: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(containerColor = accentColor),
+    ) {
+        Text(if (isListening) "Arrêter" else "Écouter la tablature")
     }
 }
 

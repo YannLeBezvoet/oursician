@@ -41,6 +41,10 @@ enum class NoteDuration(val fractionOfWhole: Double) {
     SIXTEENTH(0.0625),
 }
 
+/** How many quarter notes [this] is worth — the shared unit for both column width and playback duration. */
+val NoteDuration.quarterNoteMultiple: Float
+    get() = (fractionOfWhole / NoteDuration.QUARTER.fractionOfWhole).toFloat()
+
 /** One beat in a measure: a rest (empty [positions]) or one or more simultaneous fretted notes (a chord). */
 data class Beat(val duration: NoteDuration, val positions: List<FretPosition> = emptyList())
 
